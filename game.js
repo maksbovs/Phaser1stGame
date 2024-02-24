@@ -32,7 +32,8 @@ var starSound;
 var bombSound;
 var timer;
 var timerText;
-var startTime; // Додано змінну для збереження часу початку гри
+var startTime;
+var replayButton; // Додаємо змінну для кнопки "Replay"
 
 function preload ()
 {
@@ -41,8 +42,8 @@ function preload ()
     this.load.image('star', 'assets/star.png');
     this.load.image('bomb', 'assets/bomb.png');
     this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 });
+    this.load.image('replay', 'assets/replay.png'); // Завантажуємо зображення кнопки "Replay"
 
-    // Завантажуємо звуки
     this.load.audio('starSound', 'assets/sound.wav');
     this.load.audio('bombSound', 'assets/bomb.mp3');
 }
@@ -103,10 +104,7 @@ function create ()
     });
 
     stars.children.iterate(function (child) {
-
-        //  Give each star a slightly different bounce
         child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
-
     });
 
     bombs = this.physics.add.group();
@@ -118,9 +116,9 @@ function create ()
     updateHealthBar();
 
     // Таймер
-    startTime = new Date(); // Зберігаємо час початку гри
+    startTime = new Date();
     timer = this.time.addEvent({
-        delay: 1000, // 1 секунда
+        delay: 1000,
         callback: updateTimer,
         callbackScope: this,
         loop: true
@@ -135,12 +133,16 @@ function create ()
 
     //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
     this.physics.add.overlap(player, stars, collectStar, null, this);
-
     this.physics.add.collider(player, bombs, hitBomb, null, this);
 
     // Завантажуємо звуки
     starSound = this.sound.add('starSound');
     bombSound = this.sound.add('bombSound');
+
+    // Після створення гри, додаємо кнопку "Replay"
+    replayButton = this.add.image(400, 300, 'replay').setInteractive();
+    replayButton.setVisible(false); // Починаємо з прихованою кнопкою "Replay"
+    replayButton.on('pointerdown', resetGame, this);
 }
 
 function update ()
@@ -153,19 +155,16 @@ function update ()
     if (cursors.left.isDown)
     {
         player.setVelocityX(-160);
-
         player.anims.play('left', true);
     }
     else if (cursors.right.isDown)
     {
         player.setVelocityX(160);
-
         player.anims.play('right', true);
     }
     else
     {
         player.setVelocityX(0);
-
         player.anims.play('turn');
     }
 
@@ -174,7 +173,6 @@ function update ()
         player.setVelocityY(-330);
     }
 
-    // Update health text position
     healthText.setPosition(player.x - healthText.displayWidth / 2, player.y - 70);
     healthBar.setPosition(player.x - 20, player.y - 40);
 }
@@ -182,32 +180,22 @@ function update ()
 function collectStar (player, star)
 {
     star.disableBody(true, true);
-
-    //  Add and update the score
     score += 10;
     scoreText.setText('Score: ' + score);
 
     var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
-
     var bomb = bombs.create(x, 16, 'bomb');
     bomb.setBounce(1);
     bomb.setCollideWorldBounds(true);
     bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
     bomb.allowGravity = false;
 
-    // Відтворюємо звук
     starSound.play();
-
-    // Reset gameOver flag
-    gameOver = false;
 }
 
 function hitBomb(player, bomb) {
-    health -= 50; // Зменшуємо здоров'я на половину
-
-    updateHealthBar(); // Оновлюємо індикатор здоров'я
-
-    // Відтворюємо звук
+    health -= 50;
+    updateHealthBar();
     bombSound.play();
 
     if (health <= 0) {
@@ -215,29 +203,21 @@ function hitBomb(player, bomb) {
         player.setTint(0xff0000);
         player.anims.play('turn');
         gameOver = true;
-        gameOverText = this.add.text(400, 300, 'Game Over', { fontSize: '64px', fill: '#ff0000' });
-        gameOverText.setOrigin(0.5);
-        replayButton = this.add.image(400, 400, 'replay').setInteractive();
-        replayButton.on('pointerdown', function () {
-            resetGame.call(this);
-        }, this);
+        replayButton.setVisible(true); // Показуємо кнопку "Replay"
     }
 }
 
 function resetGame() {
-    gameOverText.destroy(); // Видаляємо текст "Game Over"
-    replayButton.destroy(); // Видаляємо кнопку "Replay"
-    
-    // Повністю скидаємо гру до початкового стану
     score = 0;
     scoreText.setText('Score: 0');
     player.setX(100);
     player.setY(450);
     player.clearTint();
-    health = 100; // Скидаємо здоров'я до початкового значення
-    updateHealthBar(); // Оновлюємо індикатор здоров'я
+    health = 100;
+    updateHealthBar();
     gameOver = false;
-    this.scene.restart(); // Перезапускаємо сцену
+    replayButton.setVisible(false); // Приховуємо кнопку "Replay"
+    this.scene.restart();
 }
 
 function updateHealthBar() {
@@ -248,6 +228,6 @@ function updateHealthBar() {
 }
 
 function updateTimer() {
-    var elapsedTime = Math.floor((new Date() - startTime) / 1000); // Розраховуємо пройдений час у секундах
+    var elapsedTime = Math.floor((new Date() - startTime) / 1000);
     timerText.setText('Time: ' + elapsedTime);
 }
